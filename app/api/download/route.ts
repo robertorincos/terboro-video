@@ -18,6 +18,14 @@ export const maxDuration = 300;
 
 const ALLOWED_HOSTS = new Set(["youtube.com", "youtu.be", "music.youtube.com"]);
 
+// Datacenter/VPS IPs get hit with YouTube's "Sign in to confirm you're not a
+// bot" check far more often than residential ones — a cookies.txt from a
+// logged-in browser session makes yt-dlp look like that account instead.
+// Optional: the app works without it, just less reliably from cloud hosts.
+const cookiesOption = process.env.COOKIES_PATH
+  ? { cookies: process.env.COOKIES_PATH }
+  : {};
+
 // Best video+audio up to 1080p, merged into a single stream. Capped at 1080p so a stray
 // 4K/8K source doesn't turn every request into a multi-GB download; drop the height
 // filters if you want to always take the single best available track.
@@ -148,10 +156,13 @@ export async function POST(request: NextRequest) {
       dumpSingleJson: true,
       noWarnings: true,
       noPlaylist: true,
+      ...cookiesOption,
     })) as { title?: string };
     if (info?.title) title = sanitizeFilename(info.title);
   } catch (err) {
-    const friendly = friendlyErrorFromStderr(extractStderr(err));
+    const stderr = extractStderr(err);
+    console.error("[download] metadata fetch failed:", stderr);
+    const friendly = friendlyErrorFromStderr(stderr);
     return Response.json({ error: friendly.message }, { status: friendly.status });
   }
 
@@ -169,10 +180,13 @@ export async function POST(request: NextRequest) {
       noPlaylist: true,
       noWarnings: true,
       ...(process.env.FFMPEG_PATH ? { ffmpegLocation: process.env.FFMPEG_PATH } : {}),
+      ...cookiesOption,
     });
   } catch (err) {
     await unlink(outputPath).catch(() => {});
-    const friendly = friendlyErrorFromStderr(extractStderr(err));
+    const stderr = extractStderr(err);
+    console.error("[download] video download failed:", stderr);
+    const friendly = friendlyErrorFromStderr(stderr);
     return Response.json({ error: friendly.message }, { status: friendly.status });
   }
 
