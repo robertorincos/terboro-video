@@ -1,0 +1,27 @@
+services:
+  terboro-video:
+    image: ghcr.io/robertorincos/terboro-video:latest
+    container_name: terboro_video
+    restart: always
+    ports:
+      # Host:container. 3003 is a guess to dodge your existing 69/3002/82 — if
+      # it's taken, change the left side and use the same port in the NPM
+      # proxy host's "Forward Port" field.
+      - "3003:3000"
+    environment:
+      - NODE_ENV=production
+    env_file:
+      # Optional — only needed if you're overriding FFMPEG_PATH/YOUTUBE_DL_PATH
+      # from .env.example. Doesn't need to exist.
+      - path: .env.local
+        required: false
+    read_only: true
+    tmpfs:
+      # yt-dlp/ffmpeg write the merged .mp4 to os.tmpdir() (/tmp) before it's
+      # streamed back and deleted; .next/cache is Next's on-disk cache dir.
+      - /tmp
+      - /app/.next/cache
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
