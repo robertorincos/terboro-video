@@ -19,8 +19,12 @@ services:
     # bot-check on cloud IPs (see .env.example). Export cookies.txt from a browser
     # logged into YouTube, keep it next to this file (never commit it — it's a
     # credential), and uncomment below. Must match COOKIES_PATH exactly.
+    # Deliberately NOT :ro — yt-dlp rewrites the cookie jar on exit to persist
+    # rotated session cookies, and errors out if that write fails. This bind mount
+    # is exempt from the read_only root fs below, so the write reaches the host
+    # file (harmless: it's still just your account's cookies, refreshed in place).
     # volumes:
-    #   - ./cookies.txt:/run/secrets/cookies.txt:ro
+    #   - ./cookies.txt:/run/secrets/cookies.txt
     read_only: true
     tmpfs:
       # yt-dlp/ffmpeg write the merged .mp4 to os.tmpdir() (/tmp) before it's
